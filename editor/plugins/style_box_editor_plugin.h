@@ -55,6 +55,91 @@ public:
 	StyleBoxPreview();
 };
 
+class StyleBoxQuadEditor : public EditorProperty {
+	GDCLASS(StyleBoxQuadEditor, EditorProperty);
+
+	Vector<String> properties;
+
+protected:
+	void _notification(int p_what);
+	static void _bind_methods();
+
+public:
+	void set_properties(Vector<String> p_properties);
+
+	virtual Size2 get_minimum_size() const override;
+	virtual void update_property() override;
+
+	StyleBoxQuadEditor();
+};
+
+class ThemeStyleBoxEditor : public MarginContainer {
+	GDCLASS(ThemeStyleBoxEditor, MarginContainer);
+
+	Ref<StyleBox> edited_stylebox;
+
+	Panel *main_bg;
+	Button *close_button;
+	Control *stylebox_preview;
+	List<Label *> property_sections;
+	List<Control *> property_editors;
+	Map<Control *, Control *> property_icons;
+
+	Label *background_props_label;
+	HBoxContainer *background_color_hb;
+	ColorPickerButton *background_color_picker;
+
+	Label *border_props_label;
+	HBoxContainer *border_color_hb;
+	ColorPickerButton *border_color_picker;
+	HBoxContainer *border_size_hb;
+	SpinBox *border_size_t;
+	SpinBox *border_size_r;
+	SpinBox *border_size_b;
+	SpinBox *border_size_l;
+	HBoxContainer *border_blend_hb;
+	CheckBox *border_blend;
+
+	Label *corner_props_label;
+	HBoxContainer *corner_radius_hb;
+	SpinBox *corner_radius_tl;
+	SpinBox *corner_radius_tr;
+	SpinBox *corner_radius_bl;
+	SpinBox *corner_radius_br;
+	HBoxContainer *corner_detail_hb;
+	SpinBox *corner_detail;
+
+	Label *expand_props_label;
+	HBoxContainer *expand_margin_hb;
+	SpinBox *expand_margin_t;
+	SpinBox *expand_margin_r;
+	SpinBox *expand_margin_b;
+	SpinBox *expand_margin_l;
+
+	Label *margin_props_label;
+	HBoxContainer *margin_hb;
+	SpinBox *margin_t;
+	SpinBox *margin_r;
+	SpinBox *margin_b;
+	SpinBox *margin_l;
+
+	void _update_controls();
+	void _draw_preview();
+	SpinBox *_create_spinbox_editor(String p_property);
+	void _create_control_icon(Control *p_control, const String p_base_icon, const String p_hl_icon);
+
+	void _close_button_cbk();
+	void _stylebox_property_changed(Variant p_value, String p_property);
+
+protected:
+	void _notification(int p_what);
+
+public:
+	void edit(Ref<StyleBox> p_stylebox);
+
+	ThemeStyleBoxEditor();
+};
+
 class EditorInspectorPluginStyleBox : public EditorInspectorPlugin {
 	GDCLASS(EditorInspectorPluginStyleBox, EditorInspectorPlugin);
 
