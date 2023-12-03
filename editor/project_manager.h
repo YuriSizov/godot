@@ -32,17 +32,23 @@
 #define PROJECT_MANAGER_H
 
 #include "core/io/config_file.h"
-#include "editor/editor_about.h"
 #include "scene/gui/dialogs.h"
-#include "scene/gui/file_dialog.h"
 #include "scene/gui/scroll_container.h"
 
 class CheckBox;
+class EditorAbout;
 class EditorAssetLibrary;
 class EditorFileDialog;
 class HFlowContainer;
+class LineEdit;
+class LinkButton;
+class MarginContainer;
+class OptionButton;
 class PanelContainer;
 class ProjectList;
+class TabContainer;
+class TextureRect;
+class VBoxContainer;
 
 class ProjectDialog : public ConfirmationDialog {
 	GDCLASS(ProjectDialog, ConfirmationDialog);
@@ -73,11 +79,11 @@ private:
 	Button *browse = nullptr;
 	Button *install_browse = nullptr;
 	Button *create_dir = nullptr;
-	Container *name_container = nullptr;
-	Container *path_container = nullptr;
-	Container *install_path_container = nullptr;
+	VBoxContainer *name_container = nullptr;
+	VBoxContainer *path_container = nullptr;
+	VBoxContainer *install_path_container = nullptr;
 
-	Container *renderer_container = nullptr;
+	VBoxContainer *renderer_container = nullptr;
 	Label *renderer_info = nullptr;
 	HBoxContainer *default_files_container = nullptr;
 	Ref<ButtonGroup> renderer_button_group;
@@ -330,8 +336,33 @@ class ProjectManager : public Control {
 
 	static ProjectManager *singleton;
 
+	MarginContainer *root_container = nullptr;
 	Panel *background_panel = nullptr;
-	TabContainer *tabs = nullptr;
+	VBoxContainer *main_vbox = nullptr;
+
+	HBoxContainer *title_bar = nullptr;
+	TextureRect *title_bar_logo = nullptr;
+	HBoxContainer *main_view_toggles = nullptr;
+	HBoxContainer *quick_settings_hbox = nullptr;
+
+	enum MainViewTab {
+		MAIN_VIEW_PROJECTS,
+		MAIN_VIEW_ASSETLIB,
+		MAIN_VIEW_NEWS,
+		MAIN_VIEW_MAX
+	};
+
+	MainViewTab current_main_view = MAIN_VIEW_PROJECTS;
+	HashMap<MainViewTab, Control *> main_view_map;
+	HashMap<MainViewTab, Button *> main_view_toggle_map;
+
+	PanelContainer *main_view_container = nullptr;
+	Ref<ButtonGroup> main_view_toggles_group;
+
+	Button *_add_main_view(MainViewTab p_id, const String &p_name, const Ref<Texture2D> &p_icon, Control *p_view_control);
+	void _set_main_view_icon(MainViewTab p_id, const Ref<Texture2D> &p_icon);
+	void _select_main_view(int p_id);
+
 	ProjectList *_project_list = nullptr;
 
 	LineEdit *search_box = nullptr;
@@ -372,8 +403,6 @@ class ProjectManager : public Control {
 	ConfirmationDialog *ask_update_settings = nullptr;
 	ConfirmationDialog *open_templates = nullptr;
 	EditorAbout *about = nullptr;
-
-	HBoxContainer *settings_hb = nullptr;
 
 	AcceptDialog *run_error_diag = nullptr;
 	AcceptDialog *dialog_error = nullptr;
@@ -438,7 +467,6 @@ class ProjectManager : public Control {
 
 	void _version_button_pressed();
 	void _on_order_option_changed(int p_idx);
-	void _on_tab_changed(int p_tab);
 	void _on_search_term_changed(const String &p_term);
 	void _on_search_term_submitted(const String &p_text);
 
@@ -447,7 +475,6 @@ class ProjectManager : public Control {
 
 protected:
 	void _notification(int p_what);
-	static void _bind_methods();
 
 public:
 	static ProjectManager *get_singleton() { return singleton; }
@@ -470,10 +497,10 @@ protected:
 	void _notification(int p_what);
 
 public:
-	ProjectTag(const String &p_text, bool p_display_close = false);
-
 	void connect_button_to(const Callable &p_callable);
 	const String get_tag() const;
+
+	ProjectTag(const String &p_text, bool p_display_close = false);
 };
 
 #endif // PROJECT_MANAGER_H

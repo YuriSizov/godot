@@ -31,7 +31,6 @@
 #include "project_manager.h"
 
 #include "core/config/project_settings.h"
-#include "core/io/config_file.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_saver.h"
@@ -41,6 +40,7 @@
 #include "core/os/os.h"
 #include "core/string/translation.h"
 #include "core/version.h"
+#include "editor/editor_about.h"
 #include "editor/editor_paths.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
@@ -50,7 +50,6 @@
 #include "editor/gui/editor_file_dialog.h"
 #include "editor/plugins/asset_library_editor_plugin.h"
 #include "main/main.h"
-#include "scene/gui/center_container.h"
 #include "scene/gui/check_box.h"
 #include "scene/gui/color_rect.h"
 #include "scene/gui/flow_container.h"
@@ -1934,71 +1933,68 @@ ProjectManager *ProjectManager::singleton = nullptr;
 
 void ProjectManager::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_TRANSLATION_CHANGED:
-		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED: {
-			settings_hb->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
-			queue_redraw();
-		} break;
-
 		case NOTIFICATION_ENTER_TREE: {
 			Engine::get_singleton()->set_editor_hint(false);
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
+			const int top_bar_separation = get_theme_constant(SNAME("top_bar_separation"), EditorStringName(Editor));
+			root_container->add_theme_constant_override("margin_left", top_bar_separation);
+			root_container->add_theme_constant_override("margin_top", top_bar_separation);
+			root_container->add_theme_constant_override("margin_bottom", top_bar_separation);
+			root_container->add_theme_constant_override("margin_right", top_bar_separation);
+			main_vbox->add_theme_constant_override("separation", top_bar_separation);
+
 			background_panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("Background"), EditorStringName(EditorStyles)));
-			loading_label->add_theme_font_override("font", get_theme_font(SNAME("bold"), EditorStringName(EditorFonts)));
-			search_panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("search_panel"), SNAME("ProjectManager")));
+			main_view_container->add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("TabContainer")));
 
-			// Top bar.
-			search_box->set_right_icon(get_editor_theme_icon(SNAME("Search")));
-			language_btn->set_icon(get_editor_theme_icon(SNAME("Environment")));
+			title_bar_logo->set_texture(get_editor_theme_icon(SNAME("TitleBarLogo")));
 
-			// Sidebar.
-			create_btn->set_icon(get_editor_theme_icon(SNAME("Add")));
-			import_btn->set_icon(get_editor_theme_icon(SNAME("Load")));
-			scan_btn->set_icon(get_editor_theme_icon(SNAME("Search")));
-			open_btn->set_icon(get_editor_theme_icon(SNAME("Edit")));
-			run_btn->set_icon(get_editor_theme_icon(SNAME("Play")));
-			rename_btn->set_icon(get_editor_theme_icon(SNAME("Rename")));
-			manage_tags_btn->set_icon(get_editor_theme_icon("Script"));
-			erase_btn->set_icon(get_editor_theme_icon(SNAME("Remove")));
-			erase_missing_btn->set_icon(get_editor_theme_icon(SNAME("Clear")));
-			create_tag_btn->set_icon(get_editor_theme_icon("Add"));
+			_set_main_view_icon(MAIN_VIEW_PROJECTS, get_editor_theme_icon(SNAME("ProjectList")));
+			if (AssetLibraryEditorPlugin::is_available()) {
+				_set_main_view_icon(MAIN_VIEW_ASSETLIB, get_editor_theme_icon(SNAME("AssetLib")));
+			}
+			_set_main_view_icon(MAIN_VIEW_NEWS, get_editor_theme_icon(SNAME("News")));
 
-			tag_error->add_theme_color_override("font_color", get_theme_color("error_color", EditorStringName(Editor)));
-			tag_edit_error->add_theme_color_override("font_color", get_theme_color("error_color", EditorStringName(Editor)));
+			// Project list.
+			{
+				loading_label->add_theme_font_override("font", get_theme_font(SNAME("bold"), EditorStringName(EditorFonts)));
+				search_panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("search_panel"), SNAME("ProjectManager")));
 
-			create_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			import_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			scan_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			open_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			run_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			rename_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			manage_tags_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			erase_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
-			erase_missing_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				// Top bar.
+				search_box->set_right_icon(get_editor_theme_icon(SNAME("Search")));
+				language_btn->set_icon(get_editor_theme_icon(SNAME("Environment")));
+
+				// Sidebar.
+				create_btn->set_icon(get_editor_theme_icon(SNAME("Add")));
+				import_btn->set_icon(get_editor_theme_icon(SNAME("Load")));
+				scan_btn->set_icon(get_editor_theme_icon(SNAME("Search")));
+				open_btn->set_icon(get_editor_theme_icon(SNAME("Edit")));
+				run_btn->set_icon(get_editor_theme_icon(SNAME("Play")));
+				rename_btn->set_icon(get_editor_theme_icon(SNAME("Rename")));
+				manage_tags_btn->set_icon(get_editor_theme_icon("Script"));
+				erase_btn->set_icon(get_editor_theme_icon(SNAME("Remove")));
+				erase_missing_btn->set_icon(get_editor_theme_icon(SNAME("Clear")));
+				create_tag_btn->set_icon(get_editor_theme_icon("Add"));
+
+				tag_error->add_theme_color_override("font_color", get_theme_color("error_color", EditorStringName(Editor)));
+				tag_edit_error->add_theme_color_override("font_color", get_theme_color("error_color", EditorStringName(Editor)));
+
+				create_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				import_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				scan_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				open_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				run_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				rename_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				manage_tags_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				erase_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+				erase_missing_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+			}
 
 			// Asset library popup.
 			if (asset_library) {
 				// Removes extra border margins.
 				asset_library->add_theme_style_override("panel", memnew(StyleBoxEmpty));
-			}
-		} break;
-
-		case NOTIFICATION_RESIZED: {
-			if (open_templates && open_templates->is_visible()) {
-				open_templates->popup_centered();
-			}
-			if (asset_library) {
-				real_t size = get_size().x / EDSCALE;
-				// Adjust names of tabs to fit the new size.
-				if (size < 650) {
-					local_projects_vb->set_name(TTR("Local"));
-					asset_library->set_name(TTR("Asset Library"));
-				} else {
-					local_projects_vb->set_name(TTR("Local Projects"));
-					asset_library->set_name(TTR("Asset Library Projects"));
-				}
 			}
 		} break;
 
@@ -2049,6 +2045,78 @@ Ref<Texture2D> ProjectManager::_file_dialog_get_thumbnail(const String &p_path) 
 	}
 
 	return Ref<Texture2D>();
+}
+
+Button *ProjectManager::_add_main_view(MainViewTab p_id, const String &p_name, const Ref<Texture2D> &p_icon, Control *p_view_control) {
+	ERR_FAIL_INDEX_V(p_id, MAIN_VIEW_MAX, nullptr);
+	ERR_FAIL_COND_V(main_view_map.has(p_id), nullptr);
+	ERR_FAIL_COND_V(main_view_toggle_map.has(p_id), nullptr);
+
+	Button *toggle_button = memnew(Button);
+	toggle_button->set_flat(true);
+	toggle_button->set_theme_type_variation("MainScreenButton");
+	toggle_button->set_toggle_mode(true);
+	toggle_button->set_button_group(main_view_toggles_group);
+	toggle_button->set_text(p_name);
+	toggle_button->connect("pressed", callable_mp(this, &ProjectManager::_select_main_view).bind((int)p_id));
+
+	main_view_toggles->add_child(toggle_button);
+	main_view_toggle_map[p_id] = toggle_button;
+
+	_set_main_view_icon(p_id, p_icon);
+
+	p_view_control->set_visible(false);
+	main_view_container->add_child(p_view_control);
+	main_view_map[p_id] = p_view_control;
+
+	return toggle_button;
+}
+
+void ProjectManager::_set_main_view_icon(MainViewTab p_id, const Ref<Texture2D> &p_icon) {
+	ERR_FAIL_INDEX(p_id, MAIN_VIEW_MAX);
+	ERR_FAIL_COND(!main_view_toggle_map.has(p_id));
+
+	Button *toggle_button = main_view_toggle_map[p_id];
+
+	Ref<Texture2D> old_icon = toggle_button->get_icon();
+	if (old_icon.is_valid()) {
+		old_icon->disconnect_changed(callable_mp((Control *)toggle_button, &Control::update_minimum_size));
+	}
+
+	if (p_icon.is_valid()) {
+		toggle_button->set_icon(p_icon);
+		// Make sure the control is updated if the icon is reimported.
+		p_icon->connect_changed(callable_mp((Control *)toggle_button, &Control::update_minimum_size));
+	} else {
+		toggle_button->set_icon(Ref<Texture2D>());
+	}
+}
+
+void ProjectManager::_select_main_view(int p_id) {
+	MainViewTab view_id = (MainViewTab)p_id;
+
+	ERR_FAIL_INDEX(view_id, MAIN_VIEW_MAX);
+	ERR_FAIL_COND(!main_view_map.has(view_id));
+	ERR_FAIL_COND(!main_view_toggle_map.has(view_id));
+
+	if (current_main_view != view_id) {
+		main_view_toggle_map[current_main_view]->set_pressed_no_signal(false);
+		main_view_map[current_main_view]->set_visible(false);
+		current_main_view = view_id;
+	}
+	main_view_toggle_map[current_main_view]->set_pressed_no_signal(true);
+	main_view_map[current_main_view]->set_visible(true);
+
+#ifndef ANDROID_ENABLED
+	if (current_main_view == MAIN_VIEW_PROJECTS) {
+		// Automatically grab focus when the user moves from the Templates tab
+		// back to the Projects tab.
+		search_box->grab_focus();
+	}
+
+	// The Templates tab's search field is focused on display in the asset
+	// library editor plugin code.
+#endif
 }
 
 void ProjectManager::_build_icon_type_cache(Ref<Theme> p_theme) {
@@ -2114,7 +2182,7 @@ void ProjectManager::shortcut_input(const Ref<InputEvent> &p_ev) {
 		}
 #endif
 
-		if (tabs->get_current_tab() != 0) {
+		if (current_main_view != MAIN_VIEW_PROJECTS) {
 			return;
 		}
 
@@ -2188,8 +2256,7 @@ void ProjectManager::_load_recent_projects() {
 	_project_list->load_projects();
 
 	_update_project_buttons();
-
-	tabs->set_current_tab(0);
+	_select_main_view(MAIN_VIEW_PROJECTS);
 }
 
 void ProjectManager::_on_projects_updated() {
@@ -2708,19 +2775,6 @@ void ProjectManager::_on_order_option_changed(int p_idx) {
 	}
 }
 
-void ProjectManager::_on_tab_changed(int p_tab) {
-#ifndef ANDROID_ENABLED
-	if (p_tab == 0) { // Projects
-		// Automatically grab focus when the user moves from the Templates tab
-		// back to the Projects tab.
-		search_box->grab_focus();
-	}
-
-	// The Templates tab's search field is focused on display in the asset
-	// library editor plugin code.
-#endif
-}
-
 void ProjectManager::_on_search_term_changed(const String &p_term) {
 	_project_list->set_search_term(p_term);
 	_project_list->sort_projects();
@@ -2733,21 +2787,16 @@ void ProjectManager::_on_search_term_changed(const String &p_term) {
 }
 
 void ProjectManager::_on_search_term_submitted(const String &p_text) {
-	if (tabs->get_current_tab() != 0) {
+	if (current_main_view != MAIN_VIEW_PROJECTS) {
 		return;
 	}
 
 	_open_selected_projects_ask();
 }
 
-void ProjectManager::_bind_methods() {
-	ClassDB::bind_method("_update_project_buttons", &ProjectManager::_update_project_buttons);
-	ClassDB::bind_method("_version_button_pressed", &ProjectManager::_version_button_pressed);
-}
-
 void ProjectManager::_open_asset_library() {
 	asset_library->disable_community_support();
-	tabs->set_current_tab(1);
+	_select_main_view(MAIN_VIEW_ASSETLIB);
 }
 
 void ProjectManager::_version_button_pressed() {
@@ -2801,7 +2850,6 @@ ProjectManager::ProjectManager() {
 
 	{
 		int display_scale = EDITOR_GET("interface/editor/display_scale");
-
 		switch (display_scale) {
 			case 0:
 				// Try applying a suitable display scale automatically.
@@ -2829,6 +2877,7 @@ ProjectManager::ProjectManager() {
 				EditorScale::set_scale(EDITOR_GET("interface/editor/custom_display_scale"));
 				break;
 		}
+
 		EditorFileDialog::get_icon_func = &ProjectManager::_file_dialog_get_icon;
 		EditorFileDialog::get_thumbnail_func = &ProjectManager::_file_dialog_get_thumbnail;
 	}
@@ -2853,185 +2902,49 @@ ProjectManager::ProjectManager() {
 	set_theme(theme);
 	set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 
+	// Project manager layout.
+
 	background_panel = memnew(Panel);
 	add_child(background_panel);
 	background_panel->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 
-	VBoxContainer *vb = memnew(VBoxContainer);
-	background_panel->add_child(vb);
-	vb->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT, Control::PRESET_MODE_MINSIZE, 8 * EDSCALE);
+	root_container = memnew(MarginContainer);
+	add_child(root_container);
+	root_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 
-	Control *center_box = memnew(Control);
-	center_box->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-	vb->add_child(center_box);
+	main_vbox = memnew(VBoxContainer);
+	root_container->add_child(main_vbox);
 
-	tabs = memnew(TabContainer);
-	center_box->add_child(tabs);
-	tabs->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-	tabs->connect("tab_changed", callable_mp(this, &ProjectManager::_on_tab_changed));
-
-	local_projects_vb = memnew(VBoxContainer);
-	local_projects_vb->set_name(TTR("Local Projects"));
-	tabs->add_child(local_projects_vb);
-
+	// Title bar.
 	{
-		// A bar at top with buttons and options.
-		HBoxContainer *hb = memnew(HBoxContainer);
-		hb->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		local_projects_vb->add_child(hb);
+		title_bar = memnew(HBoxContainer);
+		main_vbox->add_child(title_bar);
 
-		create_btn = memnew(Button);
-		create_btn->set_text(TTR("New"));
-		create_btn->set_shortcut(ED_SHORTCUT("project_manager/new_project", TTR("New Project"), KeyModifierMask::CMD_OR_CTRL | Key::N));
-		create_btn->connect("pressed", callable_mp(this, &ProjectManager::_new_project));
-		hb->add_child(create_btn);
+		title_bar_logo = memnew(TextureRect);
+		title_bar_logo->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_CENTERED);
+		title_bar->add_child(title_bar_logo);
 
-		import_btn = memnew(Button);
-		import_btn->set_text(TTR("Import"));
-		import_btn->set_shortcut(ED_SHORTCUT("project_manager/import_project", TTR("Import Project"), KeyModifierMask::CMD_OR_CTRL | Key::I));
-		import_btn->connect("pressed", callable_mp(this, &ProjectManager::_import_project));
-		hb->add_child(import_btn);
+		HBoxContainer *left_spacer = memnew(HBoxContainer);
+		left_spacer->set_mouse_filter(Control::MOUSE_FILTER_PASS);
+		left_spacer->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		title_bar->add_child(left_spacer);
 
-		scan_btn = memnew(Button);
-		scan_btn->set_text(TTR("Scan"));
-		scan_btn->set_shortcut(ED_SHORTCUT("project_manager/scan_projects", TTR("Scan Projects"), KeyModifierMask::CMD_OR_CTRL | Key::S));
-		scan_btn->connect("pressed", callable_mp(this, &ProjectManager::_scan_projects));
-		hb->add_child(scan_btn);
+		main_view_toggles = memnew(HBoxContainer);
+		title_bar->add_child(main_view_toggles);
 
-		loading_label = memnew(Label(TTR("Loading, please wait...")));
-		loading_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		hb->add_child(loading_label);
-		// The loading label is shown later.
-		loading_label->hide();
+		main_view_toggles_group.instantiate();
 
-		search_box = memnew(LineEdit);
-		search_box->set_placeholder(TTR("Filter Projects"));
-		search_box->set_tooltip_text(TTR("This field filters projects by name and last path component.\nTo filter projects by name and full path, the query must contain at least one `/` character."));
-		search_box->set_clear_button_enabled(true);
-		search_box->connect("text_changed", callable_mp(this, &ProjectManager::_on_search_term_changed));
-		search_box->connect("text_submitted", callable_mp(this, &ProjectManager::_on_search_term_submitted));
-		search_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		hb->add_child(search_box);
+		Control *right_spacer = memnew(Control);
+		right_spacer->set_mouse_filter(Control::MOUSE_FILTER_PASS);
+		right_spacer->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		title_bar->add_child(right_spacer);
 
-		Label *sort_label = memnew(Label);
-		sort_label->set_text(TTR("Sort:"));
-		hb->add_child(sort_label);
-
-		filter_option = memnew(OptionButton);
-		filter_option->set_clip_text(true);
-		filter_option->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		filter_option->set_stretch_ratio(0.3);
-		filter_option->connect("item_selected", callable_mp(this, &ProjectManager::_on_order_option_changed));
-		hb->add_child(filter_option);
-
-		Vector<String> sort_filter_titles;
-		sort_filter_titles.push_back(TTR("Last Edited"));
-		sort_filter_titles.push_back(TTR("Name"));
-		sort_filter_titles.push_back(TTR("Path"));
-		sort_filter_titles.push_back(TTR("Tags"));
-
-		for (int i = 0; i < sort_filter_titles.size(); i++) {
-			filter_option->add_item(sort_filter_titles[i]);
-		}
+		quick_settings_hbox = memnew(HBoxContainer);
+		title_bar->add_child(quick_settings_hbox);
 	}
 
+	// Quick settings toggles.
 	{
-		// A container for the project list and for the side bar with buttons.
-		HBoxContainer *search_tree_hb = memnew(HBoxContainer);
-		local_projects_vb->add_child(search_tree_hb);
-		search_tree_hb->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-
-		search_panel = memnew(PanelContainer);
-		search_panel->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		search_tree_hb->add_child(search_panel);
-
-		_project_list = memnew(ProjectList);
-		_project_list->connect(ProjectList::SIGNAL_SELECTION_CHANGED, callable_mp(this, &ProjectManager::_update_project_buttons));
-		_project_list->connect(ProjectList::SIGNAL_PROJECT_ASK_OPEN, callable_mp(this, &ProjectManager::_open_selected_projects_ask));
-		_project_list->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
-		search_panel->add_child(_project_list);
-
-		// The side bar with the edit, run, rename, etc. buttons.
-		VBoxContainer *tree_vb = memnew(VBoxContainer);
-		tree_vb->set_custom_minimum_size(Size2(120, 120));
-		search_tree_hb->add_child(tree_vb);
-
-		tree_vb->add_child(memnew(HSeparator));
-
-		open_btn = memnew(Button);
-		open_btn->set_text(TTR("Edit"));
-		open_btn->set_shortcut(ED_SHORTCUT("project_manager/edit_project", TTR("Edit Project"), KeyModifierMask::CMD_OR_CTRL | Key::E));
-		open_btn->connect("pressed", callable_mp(this, &ProjectManager::_open_selected_projects_ask));
-		tree_vb->add_child(open_btn);
-
-		run_btn = memnew(Button);
-		run_btn->set_text(TTR("Run"));
-		run_btn->set_shortcut(ED_SHORTCUT("project_manager/run_project", TTR("Run Project"), KeyModifierMask::CMD_OR_CTRL | Key::R));
-		run_btn->connect("pressed", callable_mp(this, &ProjectManager::_run_project));
-		tree_vb->add_child(run_btn);
-
-		rename_btn = memnew(Button);
-		rename_btn->set_text(TTR("Rename"));
-		// The F2 shortcut isn't overridden with Enter on macOS as Enter is already used to edit a project.
-		rename_btn->set_shortcut(ED_SHORTCUT("project_manager/rename_project", TTR("Rename Project"), Key::F2));
-		rename_btn->connect("pressed", callable_mp(this, &ProjectManager::_rename_project));
-		tree_vb->add_child(rename_btn);
-
-		manage_tags_btn = memnew(Button);
-		manage_tags_btn->set_text(TTR("Manage Tags"));
-		tree_vb->add_child(manage_tags_btn);
-
-		erase_btn = memnew(Button);
-		erase_btn->set_text(TTR("Remove"));
-		erase_btn->set_shortcut(ED_SHORTCUT("project_manager/remove_project", TTR("Remove Project"), Key::KEY_DELETE));
-		erase_btn->connect("pressed", callable_mp(this, &ProjectManager::_erase_project));
-		tree_vb->add_child(erase_btn);
-
-		erase_missing_btn = memnew(Button);
-		erase_missing_btn->set_text(TTR("Remove Missing"));
-		erase_missing_btn->connect("pressed", callable_mp(this, &ProjectManager::_erase_missing_projects));
-		tree_vb->add_child(erase_missing_btn);
-
-		tree_vb->add_spacer();
-
-		about_btn = memnew(Button);
-		about_btn->set_text(TTR("About"));
-		about_btn->connect("pressed", callable_mp(this, &ProjectManager::_show_about));
-		tree_vb->add_child(about_btn);
-	}
-
-	{
-		// Version info and language options
-		settings_hb = memnew(HBoxContainer);
-		settings_hb->set_alignment(BoxContainer::ALIGNMENT_END);
-		settings_hb->set_h_grow_direction(Control::GROW_DIRECTION_BEGIN);
-		settings_hb->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT);
-
-		// A VBoxContainer that contains a dummy Control node to adjust the LinkButton's vertical position.
-		VBoxContainer *spacer_vb = memnew(VBoxContainer);
-		settings_hb->add_child(spacer_vb);
-
-		Control *v_spacer = memnew(Control);
-		spacer_vb->add_child(v_spacer);
-
-		version_btn = memnew(LinkButton);
-		String hash = String(VERSION_HASH);
-		if (hash.length() != 0) {
-			hash = " " + vformat("[%s]", hash.left(9));
-		}
-		version_btn->set_text("v" VERSION_FULL_BUILD + hash);
-		// Fade the version label to be less prominent, but still readable.
-		version_btn->set_self_modulate(Color(1, 1, 1, 0.6));
-		version_btn->set_underline_mode(LinkButton::UNDERLINE_MODE_ON_HOVER);
-		version_btn->set_tooltip_text(TTR("Click to copy."));
-		version_btn->connect("pressed", callable_mp(this, &ProjectManager::_version_button_pressed));
-		spacer_vb->add_child(version_btn);
-
-		// Add a small horizontal spacer between the version and language buttons
-		// to distinguish them.
-		Control *h_spacer = memnew(Control);
-		settings_hb->add_child(h_spacer);
-
 		language_btn = memnew(OptionButton);
 		language_btn->set_focus_mode(Control::FOCUS_NONE);
 		language_btn->set_fit_to_longest_item(false);
@@ -3067,21 +2980,185 @@ ProjectManager::ProjectManager() {
 			}
 		}
 
-		settings_hb->add_child(language_btn);
-		center_box->add_child(settings_hb);
+		quick_settings_hbox->add_child(language_btn);
+	}
+
+	main_view_container = memnew(PanelContainer);
+	main_view_container->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	main_vbox->add_child(main_view_container);
+
+	// Project list view.
+	{
+		local_projects_vb = memnew(VBoxContainer);
+		local_projects_vb->set_name("LocalProjectsTab");
+		_add_main_view(MAIN_VIEW_PROJECTS, TTR("Projects"), Ref<Texture2D>(), local_projects_vb);
+
+		// Project list's top bar.
+		{
+			HBoxContainer *hb = memnew(HBoxContainer);
+			hb->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+			local_projects_vb->add_child(hb);
+
+			create_btn = memnew(Button);
+			create_btn->set_text(TTR("New"));
+			create_btn->set_shortcut(ED_SHORTCUT("project_manager/new_project", TTR("New Project"), KeyModifierMask::CMD_OR_CTRL | Key::N));
+			create_btn->connect("pressed", callable_mp(this, &ProjectManager::_new_project));
+			hb->add_child(create_btn);
+
+			import_btn = memnew(Button);
+			import_btn->set_text(TTR("Import"));
+			import_btn->set_shortcut(ED_SHORTCUT("project_manager/import_project", TTR("Import Project"), KeyModifierMask::CMD_OR_CTRL | Key::I));
+			import_btn->connect("pressed", callable_mp(this, &ProjectManager::_import_project));
+			hb->add_child(import_btn);
+
+			scan_btn = memnew(Button);
+			scan_btn->set_text(TTR("Scan"));
+			scan_btn->set_shortcut(ED_SHORTCUT("project_manager/scan_projects", TTR("Scan Projects"), KeyModifierMask::CMD_OR_CTRL | Key::S));
+			scan_btn->connect("pressed", callable_mp(this, &ProjectManager::_scan_projects));
+			hb->add_child(scan_btn);
+
+			loading_label = memnew(Label(TTR("Loading, please wait...")));
+			loading_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+			hb->add_child(loading_label);
+			// The loading label is shown later.
+			loading_label->hide();
+
+			search_box = memnew(LineEdit);
+			search_box->set_placeholder(TTR("Filter Projects"));
+			search_box->set_tooltip_text(TTR("This field filters projects by name and last path component.\nTo filter projects by name and full path, the query must contain at least one `/` character."));
+			search_box->set_clear_button_enabled(true);
+			search_box->connect("text_changed", callable_mp(this, &ProjectManager::_on_search_term_changed));
+			search_box->connect("text_submitted", callable_mp(this, &ProjectManager::_on_search_term_submitted));
+			search_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+			hb->add_child(search_box);
+
+			Label *sort_label = memnew(Label);
+			sort_label->set_text(TTR("Sort:"));
+			hb->add_child(sort_label);
+
+			filter_option = memnew(OptionButton);
+			filter_option->set_clip_text(true);
+			filter_option->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+			filter_option->set_stretch_ratio(0.3);
+			filter_option->connect("item_selected", callable_mp(this, &ProjectManager::_on_order_option_changed));
+			hb->add_child(filter_option);
+
+			Vector<String> sort_filter_titles;
+			sort_filter_titles.push_back(TTR("Last Edited"));
+			sort_filter_titles.push_back(TTR("Name"));
+			sort_filter_titles.push_back(TTR("Path"));
+			sort_filter_titles.push_back(TTR("Tags"));
+
+			for (int i = 0; i < sort_filter_titles.size(); i++) {
+				filter_option->add_item(sort_filter_titles[i]);
+			}
+		}
+
+		// Project list and its sidebar.
+		{
+			HBoxContainer *search_tree_hb = memnew(HBoxContainer);
+			local_projects_vb->add_child(search_tree_hb);
+			search_tree_hb->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
+			search_panel = memnew(PanelContainer);
+			search_panel->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+			search_tree_hb->add_child(search_panel);
+
+			_project_list = memnew(ProjectList);
+			_project_list->connect(ProjectList::SIGNAL_SELECTION_CHANGED, callable_mp(this, &ProjectManager::_update_project_buttons));
+			_project_list->connect(ProjectList::SIGNAL_PROJECT_ASK_OPEN, callable_mp(this, &ProjectManager::_open_selected_projects_ask));
+			_project_list->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
+			search_panel->add_child(_project_list);
+
+			// The side bar with the edit, run, rename, etc. buttons.
+			VBoxContainer *tree_vb = memnew(VBoxContainer);
+			tree_vb->set_custom_minimum_size(Size2(120, 120));
+			search_tree_hb->add_child(tree_vb);
+
+			tree_vb->add_child(memnew(HSeparator));
+
+			open_btn = memnew(Button);
+			open_btn->set_text(TTR("Edit"));
+			open_btn->set_shortcut(ED_SHORTCUT("project_manager/edit_project", TTR("Edit Project"), KeyModifierMask::CMD_OR_CTRL | Key::E));
+			open_btn->connect("pressed", callable_mp(this, &ProjectManager::_open_selected_projects_ask));
+			tree_vb->add_child(open_btn);
+
+			run_btn = memnew(Button);
+			run_btn->set_text(TTR("Run"));
+			run_btn->set_shortcut(ED_SHORTCUT("project_manager/run_project", TTR("Run Project"), KeyModifierMask::CMD_OR_CTRL | Key::R));
+			run_btn->connect("pressed", callable_mp(this, &ProjectManager::_run_project));
+			tree_vb->add_child(run_btn);
+
+			rename_btn = memnew(Button);
+			rename_btn->set_text(TTR("Rename"));
+			// The F2 shortcut isn't overridden with Enter on macOS as Enter is already used to edit a project.
+			rename_btn->set_shortcut(ED_SHORTCUT("project_manager/rename_project", TTR("Rename Project"), Key::F2));
+			rename_btn->connect("pressed", callable_mp(this, &ProjectManager::_rename_project));
+			tree_vb->add_child(rename_btn);
+
+			manage_tags_btn = memnew(Button);
+			manage_tags_btn->set_text(TTR("Manage Tags"));
+			tree_vb->add_child(manage_tags_btn);
+
+			erase_btn = memnew(Button);
+			erase_btn->set_text(TTR("Remove"));
+			erase_btn->set_shortcut(ED_SHORTCUT("project_manager/remove_project", TTR("Remove Project"), Key::KEY_DELETE));
+			erase_btn->connect("pressed", callable_mp(this, &ProjectManager::_erase_project));
+			tree_vb->add_child(erase_btn);
+
+			erase_missing_btn = memnew(Button);
+			erase_missing_btn->set_text(TTR("Remove Missing"));
+			erase_missing_btn->connect("pressed", callable_mp(this, &ProjectManager::_erase_missing_projects));
+			tree_vb->add_child(erase_missing_btn);
+
+			tree_vb->add_spacer();
+
+			about_btn = memnew(Button);
+			about_btn->set_text(TTR("About"));
+			about_btn->connect("pressed", callable_mp(this, &ProjectManager::_show_about));
+			tree_vb->add_child(about_btn);
+		}
 	}
 
 	if (AssetLibraryEditorPlugin::is_available()) {
 		asset_library = memnew(EditorAssetLibrary(true));
-		asset_library->set_name(TTR("Asset Library Projects"));
-		tabs->add_child(asset_library);
+		asset_library->set_name("AssetLibraryTab");
+		_add_main_view(MAIN_VIEW_ASSETLIB, TTR("Asset Library"), Ref<Texture2D>(), asset_library);
 		asset_library->connect("install_asset", callable_mp(this, &ProjectManager::_install_project));
 	} else {
 		print_verbose("Asset Library not available (due to using Web editor, or SSL support disabled).");
 	}
 
+	// News view.
 	{
-		// Dialogs
+		VBoxContainer *news_vbox = memnew(VBoxContainer);
+		news_vbox->set_name("NewsTab");
+		Button *news_toggle = _add_main_view(MAIN_VIEW_NEWS, TTR("News"), Ref<Texture2D>(), news_vbox);
+		news_toggle->set_disabled(true);
+	}
+
+	// Footer bar.
+	{
+		HBoxContainer *footer_bar = memnew(HBoxContainer);
+		footer_bar->set_alignment(BoxContainer::ALIGNMENT_END);
+		main_vbox->add_child(footer_bar);
+
+		version_btn = memnew(LinkButton);
+		String hash = String(VERSION_HASH);
+		if (hash.length() != 0) {
+			hash = " " + vformat("[%s]", hash.left(9));
+		}
+		version_btn->set_text("v" VERSION_FULL_BUILD + hash);
+		// Fade the version label to be less prominent, but still readable.
+		version_btn->set_self_modulate(Color(1, 1, 1, 0.6));
+		version_btn->set_underline_mode(LinkButton::UNDERLINE_MODE_ON_HOVER);
+		version_btn->set_tooltip_text(TTR("Click to copy the version information."));
+		version_btn->connect("pressed", callable_mp(this, &ProjectManager::_version_button_pressed));
+		footer_bar->add_child(version_btn);
+	}
+
+	// Dialogs.
+	{
 		language_restart_ask = memnew(ConfirmationDialog);
 		language_restart_ask->set_ok_button_text(TTR("Restart Now"));
 		language_restart_ask->get_ok_button()->connect("pressed", callable_mp(this, &ProjectManager::_restart_confirm));
@@ -3172,8 +3249,8 @@ ProjectManager::ProjectManager() {
 		_build_icon_type_cache(get_theme());
 	}
 
+	// Tag management.
 	{
-		// Tag management.
 		tag_manage_dialog = memnew(ConfirmationDialog);
 		add_child(tag_manage_dialog);
 		tag_manage_dialog->set_title(TTR("Manage Project Tags"));
@@ -3296,6 +3373,7 @@ ProjectManager::ProjectManager() {
 
 ProjectManager::~ProjectManager() {
 	singleton = nullptr;
+
 	if (EditorSettings::get_singleton()) {
 		EditorSettings::destroy();
 	}
@@ -3308,6 +3386,14 @@ void ProjectTag::_notification(int p_what) {
 	if (display_close && p_what == NOTIFICATION_THEME_CHANGED) {
 		button->set_icon(get_theme_icon(SNAME("close"), SNAME("TabBar")));
 	}
+}
+
+void ProjectTag::connect_button_to(const Callable &p_callable) {
+	button->connect(SNAME("pressed"), p_callable, CONNECT_DEFERRED);
+}
+
+const String ProjectTag::get_tag() const {
+	return tag_string;
 }
 
 ProjectTag::ProjectTag(const String &p_text, bool p_display_close) {
@@ -3333,12 +3419,4 @@ ProjectTag::ProjectTag(const String &p_text, bool p_display_close) {
 	button->set_focus_mode(FOCUS_NONE);
 	button->set_icon_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
 	button->set_theme_type_variation(SNAME("ProjectTag"));
-}
-
-void ProjectTag::connect_button_to(const Callable &p_callable) {
-	button->connect(SNAME("pressed"), p_callable, CONNECT_DEFERRED);
-}
-
-const String ProjectTag::get_tag() const {
-	return tag_string;
 }
