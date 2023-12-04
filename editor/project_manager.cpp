@@ -192,7 +192,9 @@ void ProjectManager::_update_size_limits() {
 	Window *w = Object::cast_to<Window>(SceneTree::get_singleton()->get_root());
 	if (w) {
 		w->set_min_size(minimum_size);
+		DisplayServer::get_singleton()->window_set_min_size(minimum_size);
 		w->set_size(default_size);
+		DisplayServer::get_singleton()->window_set_size(default_size);
 	}
 
 	Rect2i screen_rect = DisplayServer::get_singleton()->screen_get_usable_rect(DisplayServer::get_singleton()->window_get_current_screen());
@@ -205,7 +207,8 @@ void ProjectManager::_update_size_limits() {
 
 		// Limit popup menus to prevent unusably long lists.
 		// We try to set it to half the screen resolution, but no smaller than the minimum window size.
-		Size2 maximum_popup_size = MAX((screen_rect.size * EDSCALE) / 2, minimum_size);
+		Size2 half_screen_rect = (screen_rect.size * EDSCALE) / 2;
+		Size2 maximum_popup_size = MAX(half_screen_rect, minimum_size);
 		language_btn->get_popup()->set_max_size(maximum_popup_size);
 	}
 }
