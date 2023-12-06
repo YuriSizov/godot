@@ -274,7 +274,7 @@ void ProjectManager::_select_main_view(int p_id) {
 	main_view_map[current_main_view]->set_visible(true);
 
 #ifndef ANDROID_ENABLED
-	if (current_main_view == MAIN_VIEW_PROJECTS) {
+	if (current_main_view == MAIN_VIEW_PROJECTS && search_box->is_inside_tree()) {
 		// Automatically grab focus when the user moves from the Templates tab
 		// back to the Projects tab.
 		search_box->grab_focus();
